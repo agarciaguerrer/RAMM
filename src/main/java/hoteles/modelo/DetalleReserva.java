@@ -28,7 +28,7 @@ public class DetalleReserva {
         return precioNocheAplicado * noches;
     }
     @Override public String toString() {
-        return "DetalleReserva{idDetalle=" + idDetalle + ", habitacion=" + habitacion.getNumero() +
-               ", precioNocheAplicado=" + precioNocheAplicado + "}";
+        return "Habitación " + habitacion.getNumero() + " (" + habitacion.getCategoria() + ") | "
+               + String.format("%.2f", precioNocheAplicado) + " €/noche";
     }
 }

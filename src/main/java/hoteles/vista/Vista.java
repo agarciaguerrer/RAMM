@@ -284,7 +284,7 @@ public class Vista {
             return;
         }
         mostrar(disponibles, "");
-        System.out.println("(El id de habitación es el de la lista de habitaciones del hotel)");
+        System.out.println("(El id de cada habitación aparece entre paréntesis)");
         List<Integer> ids = leerListaEnteros("Ids de las habitaciones a reservar (separados por comas): ");
 
         System.out.println("Reserva creada:\n" + controlador.crearReserva(idCliente, idHotel, entrada, salida, personas, ids));

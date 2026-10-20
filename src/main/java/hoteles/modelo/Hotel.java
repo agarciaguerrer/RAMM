@@ -44,7 +44,7 @@ public class Hotel {
         return v.trim();
     }
     @Override public String toString() {
-        return "Hotel{idHotel=" + idHotel + ", nombre='" + nombre + "', ciudad='" + ciudad +
-               "', direccion='" + direccion + "', habitaciones=" + habitaciones.size() + "}";
+        return nombre + " (id " + idHotel + ") | " + ciudad + " | " + direccion + " | "
+               + habitaciones.size() + (habitaciones.size() == 1 ? " habitación" : " habitaciones");
     }
 }

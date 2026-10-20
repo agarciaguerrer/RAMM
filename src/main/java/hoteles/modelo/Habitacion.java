@@ -47,7 +47,8 @@ public class Habitacion {
         return v.trim();
     }
     @Override public String toString() {
-        return "Habitacion{idHabitacion=" + idHabitacion + ", numero='" + numero + "', categoria='" +
-               categoria + "', capacidad=" + capacidad + ", precioNoche=" + precioNoche + "}";
+        return "Habitación " + numero + " (id " + idHabitacion + ") | " + categoria + " | capacidad: "
+               + capacidad + (capacidad == 1 ? " persona" : " personas")
+               + " | " + String.format("%.2f", precioNoche) + " €/noche";
     }
 }

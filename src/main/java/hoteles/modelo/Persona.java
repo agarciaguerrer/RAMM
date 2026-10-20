@@ -23,7 +23,6 @@ public abstract class Persona {
         return v.trim();
     }
     @Override public String toString() {
-        return "nombre='" + nombre + "', apellidos='" + apellidos + "', email='" + email +
-               "', telefono='" + telefono + "'";
+        return nombre + " " + apellidos + " | " + email + " | Tel: " + telefono;
     }
 }

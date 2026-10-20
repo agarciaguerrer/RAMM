@@ -80,9 +80,12 @@ public class Reserva {
     public void confirmar() { estado = EstadoReserva.CONFIRMADA; }
     public void cancelar() { estado = EstadoReserva.CANCELADA; }
     @Override public String toString() {
-        return "Reserva{idReserva=" + idReserva + ", cliente=" + cliente.getNombre() + " " +
-            cliente.getApellidos() + ", hotel=" + hotel.getNombre() + ", fechaEntrada=" + fechaEntrada +
-            ", fechaSalida=" + fechaSalida + ", numeroPersonas=" + numeroPersonas + ", estado=" + estado +
-            ", numeroHabitaciones=" + detalles.size() + ", importeTotal=" + calcularImporte() + "}";
+        java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return "Reserva " + idReserva + " | " + cliente.getNombre() + " " + cliente.getApellidos()
+            + " | " + hotel.getNombre() + " | " + fechaEntrada.format(f) + " -> " + fechaSalida.format(f)
+            + " (" + calcularNoches() + (calcularNoches() == 1 ? " noche" : " noches") + ")"
+            + " | " + numeroPersonas + (numeroPersonas == 1 ? " persona" : " personas")
+            + " | " + estado + " | " + detalles.size() + (detalles.size() == 1 ? " habitación" : " habitaciones")
+            + " | Total: " + String.format("%.2f", calcularImporte()) + " €";
     }
 }

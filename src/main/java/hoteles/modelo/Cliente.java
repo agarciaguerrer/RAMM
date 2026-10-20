@@ -13,5 +13,5 @@ public class Cliente extends Persona {
     public void actualizarDatos(String nombre, String apellidos, String email, String telefono) {
         setNombre(nombre); setApellidos(apellidos); setEmail(email); setTelefono(telefono);
     }
-    @Override public String toString() { return "Cliente{idCliente=" + idCliente + ", " + super.toString() + "}"; }
+    @Override public String toString() { return "Cliente " + idCliente + ": " + super.toString(); }
 }
