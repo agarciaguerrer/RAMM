@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.TreeMap;
 
 /**
  * Contiene todos los datos de la aplicación y realiza todas las operaciones que los afectan.
@@ -13,7 +14,9 @@ public class Datos {
 
     private final Repositorio<Cliente> clientes = new Repositorio<>("un cliente", Cliente::getIdCliente);
     private final Repositorio<Hotel> hoteles = new Repositorio<>("un hotel", Hotel::getIdHotel);
-    private final Repositorio<Reserva> reservas = new Repositorio<>("una reserva", Reserva::getIdReserva);
+    // TreeMap: las reservas quedan siempre ordenadas por su id
+    private final Repositorio<Reserva> reservas =
+            new Repositorio<>("una reserva", Reserva::getIdReserva, new TreeMap<>());
 
     private int siguienteIdCliente = 1;
     private int siguienteIdHotel = 1;
