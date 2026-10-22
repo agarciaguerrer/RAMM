@@ -2,8 +2,10 @@ package hoteles.modelo;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -18,6 +20,10 @@ public class Datos {
     private final Repositorio<Reserva> reservas =
             new Repositorio<>("una reserva", Reserva::getIdReserva, new TreeMap<>());
 
+    // HashSet: comprobar si un email ya está registrado es inmediato (O(1)) y no admite repetidos.
+    // Se guardan en minúsculas para que "Laura@Email.com" y "laura@email.com" cuenten como el mismo.
+    private final Set<String> emailsRegistrados = new HashSet<>();
+
     private int siguienteIdCliente = 1;
     private int siguienteIdHotel = 1;
     private int siguienteIdHabitacion = 1;
@@ -29,13 +35,12 @@ public class Datos {
     public Cliente anadirCliente(String nombre, String apellidos, String email, String telefono)
             throws ElementoDuplicadoException {
         String emailNuevo = email == null ? "" : email.trim();
-        for (Cliente c : clientes.listar()) {
-            if (c.getEmail().equalsIgnoreCase(emailNuevo)) {
-                throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
-            }
+        if (emailsRegistrados.contains(emailNuevo.toLowerCase())) {
+            throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
         }
         Cliente cliente = new Cliente(siguienteIdCliente, nombre, apellidos, email, telefono);
         clientes.anadir(cliente);
+        emailsRegistrados.add(cliente.getEmail().toLowerCase());
         siguienteIdCliente++;
         return cliente;
     }
@@ -58,7 +63,14 @@ public class Datos {
     public Cliente modificarCliente(int idCliente, String nombre, String apellidos, String email, String telefono)
             throws ElementoNoEncontradoException {
         Cliente cliente = clientes.buscar(idCliente);
-        cliente.actualizarDatos(nombre, apellidos, email, telefono);
+        String emailAnterior = cliente.getEmail().toLowerCase();
+        try {
+            cliente.actualizarDatos(nombre, apellidos, email, telefono);
+        } finally {
+            // Tanto si va bien como si falla, el conjunto de emails queda igual que el cliente
+            emailsRegistrados.remove(emailAnterior);
+            emailsRegistrados.add(cliente.getEmail().toLowerCase());
+        }
         return cliente;
     }
 
@@ -70,7 +82,8 @@ public class Datos {
                         "No se puede eliminar un cliente con reservas activas (reserva #" + r.getIdReserva() + ")");
             }
         }
-        clientes.eliminar(idCliente);
+        Cliente eliminado = clientes.eliminar(idCliente);
+        emailsRegistrados.remove(eliminado.getEmail().toLowerCase());
     }
 
     public List<Reserva> reservasDeCliente(int idCliente) throws ElementoNoEncontradoException {
