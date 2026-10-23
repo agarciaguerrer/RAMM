@@ -2,6 +2,7 @@ package hoteles.controlador;
 
 import hoteles.modelo.Datos;
 import hoteles.modelo.EstadoReserva;
+import hoteles.modelo.Validaciones;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -53,8 +54,13 @@ public class Controlador {
 
     // ----------------------------------------------------------------- Hoteles
 
-    public String anadirHotel(String nombre, String ciudad, String direccion) throws Exception {
-        return datos.anadirHotel(nombre, ciudad, direccion).toString();
+    /** Da de alta el hotel y devuelve su id, para poder añadirle habitaciones a continuación. */
+    public int anadirHotel(String nombre, String ciudad, String direccion) throws Exception {
+        return datos.anadirHotel(nombre, ciudad, direccion).getIdHotel();
+    }
+
+    public String mostrarHotel(int idHotel) throws Exception {
+        return datos.buscarHotel(idHotel).toString();
     }
 
     public List<String> listarHoteles() {
@@ -133,6 +139,99 @@ public class Controlador {
 
     public double calcularImporte(int idReserva) throws Exception {
         return datos.calcularImporte(idReserva);
+    }
+
+    // ------------------------------------------------------------ Validaciones
+    // La Vista las llama dato a dato para avisar del error en cuanto se escribe un valor incorrecto.
+    // Cada una lanza una excepción con el mensaje a mostrar si el valor no es válido.
+
+    public void validarNombre(String valor) {
+        Validaciones.nombre(valor);
+    }
+
+    public void validarApellidos(String valor) {
+        Validaciones.apellidos(valor);
+    }
+
+    /** Formato correcto y no repetido. Al modificar un cliente se pasa su id; al crearlo, null. */
+    public void validarEmail(String valor, Integer idClienteExcluido) throws Exception {
+        Validaciones.email(valor);
+        datos.comprobarEmailDisponible(valor, idClienteExcluido);
+    }
+
+    public void validarTelefono(String valor) {
+        Validaciones.telefono(valor);
+    }
+
+    public void validarNombreHotel(String valor) {
+        Validaciones.nombreHotel(valor);
+    }
+
+    public void validarCiudad(String valor) {
+        Validaciones.ciudad(valor);
+    }
+
+    public void validarDireccion(String valor) {
+        Validaciones.direccion(valor);
+    }
+
+    public void validarNumeroHabitacion(int idHotel, String valor) throws Exception {
+        Validaciones.numeroHabitacion(valor);
+        datos.comprobarNumeroHabitacionDisponible(idHotel, valor);
+    }
+
+    public void validarCategoria(String valor) {
+        Validaciones.categoria(valor);
+    }
+
+    public void validarCapacidad(int valor) {
+        Validaciones.capacidad(valor);
+    }
+
+    public void validarPrecio(double valor) {
+        Validaciones.precio(valor);
+    }
+
+    public void validarPersonas(int valor) {
+        Validaciones.personas(valor);
+    }
+
+    public void validarCliente(int idCliente) throws Exception {
+        datos.buscarCliente(idCliente);
+    }
+
+    public void validarHotel(int idHotel) throws Exception {
+        datos.buscarHotel(idHotel);
+    }
+
+    public void validarReserva(int idReserva) throws Exception {
+        datos.buscarReserva(idReserva);
+    }
+
+    public void validarReservaModificable(int idReserva) throws Exception {
+        datos.comprobarReservaModificable(idReserva);
+    }
+
+    /** Vale solo si el texto es uno de los estados existentes. */
+    public void validarEstado(String valor) {
+        convertirEstado(valor);
+    }
+
+    public void validarRango(LocalDate entrada, LocalDate salida) throws Exception {
+        datos.comprobarRango(entrada, salida);
+    }
+
+    public void validarHabitacionesReserva(int idHotel, LocalDate entrada, LocalDate salida,
+                                           int personas, List<Integer> idsHabitaciones) throws Exception {
+        datos.comprobarHabitacionesParaReserva(idHotel, entrada, salida, personas, idsHabitaciones);
+    }
+
+    public boolean hayClientes() {
+        return !datos.listarClientes().isEmpty();
+    }
+
+    public boolean hayHoteles() {
+        return !datos.listarHoteles().isEmpty();
     }
 
     // ----------------------------------------------------------------- Privados

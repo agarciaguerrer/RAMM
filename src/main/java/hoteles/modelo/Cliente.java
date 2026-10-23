@@ -11,7 +11,12 @@ public class Cliente extends Persona {
         idCliente = v;
     }
     public void actualizarDatos(String nombre, String apellidos, String email, String telefono) {
-        setNombre(nombre); setApellidos(apellidos); setEmail(email); setTelefono(telefono);
+        // Se valida todo antes de cambiar nada: si un dato es incorrecto, el cliente no queda a medias
+        String n = Validaciones.nombre(nombre);
+        String a = Validaciones.apellidos(apellidos);
+        String e = Validaciones.email(email);
+        String t = Validaciones.telefono(telefono);
+        setNombre(n); setApellidos(a); setEmail(e); setTelefono(t);
     }
     @Override public String toString() { return "Cliente " + idCliente + ": " + super.toString(); }
 }

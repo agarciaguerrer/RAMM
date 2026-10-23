@@ -42,10 +42,7 @@ public class Reserva {
         fechaEntrada = entrada; fechaSalida = salida;
     }
     public int getNumeroPersonas() { return numeroPersonas; }
-    public void setNumeroPersonas(int v) {
-        if (v <= 0) throw new IllegalArgumentException("El número de personas debe ser positivo.");
-        numeroPersonas = v;
-    }
+    public void setNumeroPersonas(int v) { numeroPersonas = Validaciones.personas(v); }
     public EstadoReserva getEstado() { return estado; }
     public void setEstado(EstadoReserva v) {
         if (v == null) throw new IllegalArgumentException("El estado es obligatorio.");

@@ -25,12 +25,7 @@ public class Datos {
 
     public Cliente anadirCliente(String nombre, String apellidos, String email, String telefono)
             throws ElementoDuplicadoException {
-        String emailNuevo = email == null ? "" : email.trim();
-        for (Cliente c : clientes.listar()) {
-            if (c.getEmail().equalsIgnoreCase(emailNuevo)) {
-                throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
-            }
-        }
+        comprobarEmailDisponible(email, null);
         Cliente cliente = new Cliente(siguienteIdCliente, nombre, apellidos, email, telefono);
         clientes.anadir(cliente);
         siguienteIdCliente++;
@@ -53,10 +48,25 @@ public class Datos {
     }
 
     public Cliente modificarCliente(int idCliente, String nombre, String apellidos, String email, String telefono)
-            throws ElementoNoEncontradoException {
+            throws ElementoNoEncontradoException, ElementoDuplicadoException {
         Cliente cliente = clientes.buscar(idCliente);
+        comprobarEmailDisponible(email, idCliente);
         cliente.actualizarDatos(nombre, apellidos, email, telefono);
         return cliente;
+    }
+
+    /**
+     * Comprueba que ningún otro cliente use ese email. Si se está modificando un cliente,
+     * se pasa su id para que su propio email no cuente como repetido.
+     */
+    public void comprobarEmailDisponible(String email, Integer idClienteExcluido) throws ElementoDuplicadoException {
+        String emailNuevo = email == null ? "" : email.trim();
+        for (Cliente c : clientes.listar()) {
+            boolean esElMismo = idClienteExcluido != null && c.getIdCliente() == idClienteExcluido;
+            if (!esElMismo && c.getEmail().equalsIgnoreCase(emailNuevo)) {
+                throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
+            }
+        }
     }
 
     public void eliminarCliente(int idCliente) throws ElementoNoEncontradoException, OperacionInvalidaException {
@@ -104,15 +114,23 @@ public class Datos {
             throws ElementoNoEncontradoException, ElementoDuplicadoException {
         Hotel hotel = hoteles.buscar(idHotel);
         Habitacion habitacion = new Habitacion(siguienteIdHabitacion, numero, categoria, capacidad, precioNoche);
-        for (Habitacion existente : hotel.listarHabitaciones()) {
-            if (existente.getNumero().equalsIgnoreCase(habitacion.getNumero())) {
-                throw new ElementoDuplicadoException(
-                        "El hotel " + hotel.getNombre() + " ya tiene la habitación " + habitacion.getNumero());
-            }
-        }
+        comprobarNumeroHabitacionDisponible(idHotel, habitacion.getNumero());
         hotel.anadirHabitacion(habitacion);
         siguienteIdHabitacion++;
         return habitacion;
+    }
+
+    /** Comprueba que el hotel no tenga ya una habitación con ese número. */
+    public void comprobarNumeroHabitacionDisponible(int idHotel, String numero)
+            throws ElementoNoEncontradoException, ElementoDuplicadoException {
+        Hotel hotel = hoteles.buscar(idHotel);
+        String buscado = numero == null ? "" : numero.trim();
+        for (Habitacion existente : hotel.listarHabitaciones()) {
+            if (existente.getNumero().equalsIgnoreCase(buscado)) {
+                throw new ElementoDuplicadoException(
+                        "El hotel " + hotel.getNombre() + " ya tiene la habitación " + existente.getNumero());
+            }
+        }
     }
 
     public List<Habitacion> listarHabitaciones(int idHotel) throws ElementoNoEncontradoException {
@@ -161,14 +179,7 @@ public class Datos {
             throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
         Cliente cliente = clientes.buscar(idCliente);
         Hotel hotel = hoteles.buscar(idHotel);
-        comprobarRango(entrada, salida);
-        comprobarPersonas(personas);
-        if (idsHabitaciones == null || idsHabitaciones.isEmpty()) {
-            throw new OperacionInvalidaException("Hay que seleccionar al menos una habitación");
-        }
-
-        List<Habitacion> elegidas = seleccionarHabitaciones(hotel, new LinkedHashSet<>(idsHabitaciones));
-        comprobarDisponibilidadYCapacidad(elegidas, entrada, salida, personas, reservas.listar());
+        List<Habitacion> elegidas = habitacionesParaReserva(hotel, entrada, salida, personas, idsHabitaciones);
 
         Reserva reserva = new Reserva(siguienteIdReserva, cliente, hotel, entrada, salida, personas,
                 EstadoReserva.PENDIENTE);
@@ -235,10 +246,25 @@ public class Datos {
 
     public Reserva modificarReserva(int idReserva, LocalDate entrada, LocalDate salida, int personas)
             throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
+        Reserva reserva = comprobarModificacion(idReserva, entrada, salida, personas);
+        reserva.modificar(entrada, salida, personas);
+        return reserva;
+    }
+
+    /** Comprueba que una reserva exista y no esté cancelada (condición para poder modificarla). */
+    public Reserva comprobarReservaModificable(int idReserva)
+            throws ElementoNoEncontradoException, OperacionInvalidaException {
         Reserva reserva = reservas.buscar(idReserva);
         if (reserva.getEstado() == EstadoReserva.CANCELADA) {
             throw new OperacionInvalidaException("No se puede modificar una reserva cancelada");
         }
+        return reserva;
+    }
+
+    /** Comprueba, sin cambiar nada, que la reserva admite las nuevas fechas y personas. */
+    public Reserva comprobarModificacion(int idReserva, LocalDate entrada, LocalDate salida, int personas)
+            throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
+        Reserva reserva = comprobarReservaModificable(idReserva);
         comprobarRango(entrada, salida);
         comprobarPersonas(personas);
 
@@ -249,9 +275,14 @@ public class Datos {
             habitaciones.add(d.getHabitacion());
         }
         comprobarDisponibilidadYCapacidad(habitaciones, entrada, salida, personas, otras);
-
-        reserva.modificar(entrada, salida, personas);
         return reserva;
+    }
+
+    /** Comprueba, sin crear nada, que esas habitaciones se pueden reservar con esos datos. */
+    public void comprobarHabitacionesParaReserva(int idHotel, LocalDate entrada, LocalDate salida,
+                                                 int personas, List<Integer> idsHabitaciones)
+            throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
+        habitacionesParaReserva(hoteles.buscar(idHotel), entrada, salida, personas, idsHabitaciones);
     }
 
     public double calcularImporte(int idReserva) throws ElementoNoEncontradoException {
@@ -286,10 +317,24 @@ public class Datos {
 
     // ----------------------------------------------------------------- Privados
 
-    private void comprobarRango(LocalDate entrada, LocalDate salida) throws OperacionInvalidaException {
+    /** La salida debe ser posterior a la entrada. */
+    public void comprobarRango(LocalDate entrada, LocalDate salida) throws OperacionInvalidaException {
         if (entrada == null || salida == null || !salida.isAfter(entrada)) {
             throw new OperacionInvalidaException("La fecha de salida debe ser posterior a la de entrada");
         }
+    }
+
+    private List<Habitacion> habitacionesParaReserva(Hotel hotel, LocalDate entrada, LocalDate salida,
+                                                     int personas, List<Integer> idsHabitaciones)
+            throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
+        comprobarRango(entrada, salida);
+        comprobarPersonas(personas);
+        if (idsHabitaciones == null || idsHabitaciones.isEmpty()) {
+            throw new OperacionInvalidaException("Hay que seleccionar al menos una habitación");
+        }
+        List<Habitacion> elegidas = seleccionarHabitaciones(hotel, new LinkedHashSet<>(idsHabitaciones));
+        comprobarDisponibilidadYCapacidad(elegidas, entrada, salida, personas, reservas.listar());
+        return elegidas;
     }
 
     private void comprobarPersonas(int personas) throws OperacionInvalidaException {

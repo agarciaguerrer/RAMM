@@ -18,19 +18,13 @@ public class Habitacion {
         idHabitacion = v;
     }
     public String getNumero() { return numero; }
-    public void setNumero(String v) { numero = obligatorio(v, "El número es obligatorio."); }
+    public void setNumero(String v) { numero = Validaciones.numeroHabitacion(v); }
     public String getCategoria() { return categoria; }
-    public void setCategoria(String v) { categoria = obligatorio(v, "La categoría es obligatoria."); }
+    public void setCategoria(String v) { categoria = Validaciones.categoria(v); }
     public int getCapacidad() { return capacidad; }
-    public void setCapacidad(int v) {
-        if (v <= 0) throw new IllegalArgumentException("La capacidad debe ser positiva.");
-        capacidad = v;
-    }
+    public void setCapacidad(int v) { capacidad = Validaciones.capacidad(v); }
     public double getPrecioNoche() { return precioNoche; }
-    public void setPrecioNoche(double v) {
-        if (!Double.isFinite(v) || v < 0) throw new IllegalArgumentException("El precio no puede ser negativo.");
-        precioNoche = v;
-    }
+    public void setPrecioNoche(double v) { precioNoche = Validaciones.precio(v); }
     public boolean validarCapacidad(int personas) { return personas > 0 && personas <= capacidad; }
 
     public boolean estaDisponible(LocalDate entrada, LocalDate salida, List<Reserva> reservas) {
@@ -41,10 +35,6 @@ public class Habitacion {
             && r.getFechaEntrada().isBefore(salida) && entrada.isBefore(r.getFechaSalida())
             && r.getDetalles().stream().anyMatch(d ->
                 d.getHabitacion().getIdHabitacion() == idHabitacion));
-    }
-    private static String obligatorio(String v, String m) {
-        if (v == null || v.isBlank()) throw new IllegalArgumentException(m);
-        return v.trim();
     }
     @Override public String toString() {
         return "Habitación " + numero + " (id " + idHabitacion + ") | " + categoria + " | capacidad: "

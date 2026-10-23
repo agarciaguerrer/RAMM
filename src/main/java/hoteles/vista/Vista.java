@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 /**
@@ -20,7 +21,18 @@ public class Vista {
         void ejecutar() throws Exception;
     }
 
+    /** Comprobación de un dato recién escrito: si no es válido, lanza una excepción con el motivo. */
+    private interface Comprobacion<T> {
+        void comprobar(T valor) throws Exception;
+    }
+
+    /** Se lanza cuando el usuario escribe "cancelar" en un formulario. */
+    private static class OperacionCancelada extends RuntimeException {
+    }
+
     private static final DateTimeFormatter FORMATO_ES = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String PALABRA_CANCELAR = "cancelar";
+    private static final String TEXTO_FECHA = " (dd/MM/yyyy o yyyy-MM-dd): ";
 
     private final Controlador controlador;
     private final Scanner scanner = new Scanner(System.in);
@@ -39,7 +51,7 @@ public class Vista {
         }
         try {
             menuPrincipal();
-        } catch (java.util.NoSuchElementException e) {
+        } catch (NoSuchElementException e) {
             System.out.println("\nEntrada finalizada. Saliendo...");
         }
     }
@@ -158,12 +170,9 @@ public class Vista {
                 case 1 -> ejecutar(this::crearReserva);
                 case 2 -> ejecutar(this::consultarReserva);
                 case 3 -> ejecutar(this::modificarReserva);
-                case 4 -> ejecutar(() -> System.out.println(
-                        "Reserva confirmada:\n" + controlador.confirmarReserva(leerEntero("Id de la reserva: "))));
-                case 5 -> ejecutar(() -> System.out.println(
-                        "Reserva cancelada:\n" + controlador.cancelarReserva(leerEntero("Id de la reserva: "))));
-                case 6 -> ejecutar(() -> System.out.printf("Importe total: %.2f €%n",
-                        controlador.calcularImporte(leerEntero("Id de la reserva: "))));
+                case 4 -> ejecutar(this::confirmarReserva);
+                case 5 -> ejecutar(this::cancelarReserva);
+                case 6 -> ejecutar(this::calcularImporte);
                 case 0 -> { }
                 default -> System.out.println("Opción no válida.");
             }
@@ -187,95 +196,141 @@ public class Vista {
         } while (opcion != 0);
     }
 
-    // --------------------------------------------------------------- Acciones
+    // ----------------------------------------------------- Acciones: clientes
 
     private void anadirCliente() throws Exception {
-        String nombre = leerTexto("Nombre: ");
-        String apellidos = leerTexto("Apellidos: ");
-        String email = leerTexto("Email: ");
-        String telefono = leerTexto("Teléfono: ");
-        System.out.println("Cliente añadido:\n" + controlador.anadirCliente(nombre, apellidos, email, telefono));
+        avisoCancelar();
+        String nombre = pedirTexto("Nombre: ", controlador::validarNombre);
+        String apellidos = pedirTexto("Apellidos: ", controlador::validarApellidos);
+        String email = pedirTexto("Email: ", v -> controlador.validarEmail(v, null));
+        String telefono = pedirTexto("Teléfono: ", controlador::validarTelefono);
+        System.out.println("Cliente añadido:\n  " + controlador.anadirCliente(nombre, apellidos, email, telefono));
     }
 
     private void eliminarCliente() throws Exception {
-        controlador.eliminarCliente(leerEntero("Id del cliente a eliminar: "));
+        avisoCancelar();
+        int id = pedirEntero("Id del cliente a eliminar: ", controlador::validarCliente);
+        controlador.eliminarCliente(id);
         System.out.println("Cliente eliminado.");
     }
 
     private void modificarCliente() throws Exception {
-        int id = leerEntero("Id del cliente: ");
-        String nombre = leerTexto("Nuevo nombre: ");
-        String apellidos = leerTexto("Nuevos apellidos: ");
-        String email = leerTexto("Nuevo email: ");
-        String telefono = leerTexto("Nuevo teléfono: ");
-        System.out.println("Cliente modificado:\n" + controlador.modificarCliente(id, nombre, apellidos, email, telefono));
+        avisoCancelar();
+        int id = pedirEntero("Id del cliente: ", controlador::validarCliente);
+        String nombre = pedirTexto("Nuevo nombre: ", controlador::validarNombre);
+        String apellidos = pedirTexto("Nuevos apellidos: ", controlador::validarApellidos);
+        String email = pedirTexto("Nuevo email: ", v -> controlador.validarEmail(v, id));
+        String telefono = pedirTexto("Nuevo teléfono: ", controlador::validarTelefono);
+        System.out.println("Cliente modificado:\n  " + controlador.modificarCliente(id, nombre, apellidos, email, telefono));
     }
 
     private void reservasDeCliente() throws Exception {
-        mostrar(controlador.reservasDeCliente(leerEntero("Id del cliente: ")),
-                "Este cliente no tiene reservas.");
+        avisoCancelar();
+        int id = pedirEntero("Id del cliente: ", controlador::validarCliente);
+        mostrar(controlador.reservasDeCliente(id), "Este cliente no tiene reservas.");
     }
 
+    // ------------------------------------------------------ Acciones: hoteles
+
+    /** Da de alta el hotel y, a continuación, permite añadirle todas las habitaciones que se quiera. */
     private void anadirHotel() throws Exception {
-        String nombre = leerTexto("Nombre del hotel: ");
-        String ciudad = leerTexto("Ciudad: ");
-        String direccion = leerTexto("Dirección: ");
-        System.out.println("Hotel añadido:\n" + controlador.anadirHotel(nombre, ciudad, direccion));
+        avisoCancelar();
+        String nombre = pedirTexto("Nombre del hotel: ", controlador::validarNombreHotel);
+        String ciudad = pedirTexto("Ciudad: ", controlador::validarCiudad);
+        String direccion = pedirTexto("Dirección: ", controlador::validarDireccion);
+        int idHotel = controlador.anadirHotel(nombre, ciudad, direccion);
+        System.out.println("Hotel añadido:\n  " + controlador.mostrarHotel(idHotel));
+
+        String pregunta = "¿Quieres añadir habitaciones a este hotel ahora?";
+        while (preguntarSiNo(pregunta)) {
+            try {
+                anadirHabitacionAHotel(idHotel);
+            } catch (OperacionCancelada e) {
+                System.out.println("Habitación no añadida.");
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+            pregunta = "¿Quieres añadir otra habitación?";
+        }
+        System.out.println("Resultado final:\n  " + controlador.mostrarHotel(idHotel));
+        mostrar(controlador.listarHabitaciones(idHotel), "");
     }
 
-    private void anadirHabitacion() throws Exception {
+    private void contarDisponibles() throws Exception {
+        avisoCancelar();
         int idHotel = elegirHotel();
-        String numero = leerTexto("Número de habitación: ");
-        String categoria = leerTexto("Categoría (Estándar, Familiar, Suite...): ");
-        int capacidad = leerEntero("Capacidad (personas): ");
-        double precio = leerDecimal("Precio por noche (€): ");
-        System.out.println("Habitación añadida:\n"
-                + controlador.anadirHabitacion(idHotel, numero, categoria, capacidad, precio));
-    }
-
-    private void listarHabitaciones() throws Exception {
-        int idHotel = elegirHotel();
-        mostrar(controlador.listarHabitaciones(idHotel), "Este hotel no tiene habitaciones.");
+        LocalDate entrada = pedirFecha("Fecha de entrada" + TEXTO_FECHA, f -> { });
+        LocalDate salida = pedirFecha("Fecha de salida" + TEXTO_FECHA, f -> controlador.validarRango(entrada, f));
+        System.out.println("Habitaciones disponibles: "
+                + controlador.contarHabitacionesDisponibles(idHotel, entrada, salida));
     }
 
     private void habitacionesPorCategoria() throws Exception {
+        avisoCancelar();
         int idHotel = elegirHotel();
-        String categoria = leerTexto("Categoría: ");
+        String categoria = pedirTexto("Categoría: ", controlador::validarCategoria);
         mostrar(controlador.buscarHabitacionesPorCategoria(idHotel, categoria),
                 "No hay habitaciones de esa categoría.");
     }
 
-    private void habitacionesPorCapacidad() throws Exception {
+    // ------------------------------------------------- Acciones: habitaciones
+
+    private void anadirHabitacion() throws Exception {
+        avisoCancelar();
         int idHotel = elegirHotel();
-        int personas = leerEntero("Número de personas: ");
-        mostrar(controlador.buscarHabitacionesPorCapacidad(idHotel, personas),
-                "No hay habitaciones con capacidad para esas personas.");
+        anadirHabitacionAHotel(idHotel);
     }
 
-    private void contarDisponibles() throws Exception {
+    private void anadirHabitacionAHotel(int idHotel) throws Exception {
+        System.out.println("(Escribe '" + PALABRA_CANCELAR + "' para dejar de añadir esta habitación)");
+        String numero = pedirTexto("Número de habitación: ", v -> controlador.validarNumeroHabitacion(idHotel, v));
+        String categoria = pedirTexto("Categoría (Estándar, Familiar, Suite...): ", controlador::validarCategoria);
+        int capacidad = pedirEntero("Capacidad (personas): ", controlador::validarCapacidad);
+        double precio = pedirDecimal("Precio por noche (€): ", controlador::validarPrecio);
+        System.out.println("Habitación añadida:\n  "
+                + controlador.anadirHabitacion(idHotel, numero, categoria, capacidad, precio));
+    }
+
+    private void listarHabitaciones() throws Exception {
+        avisoCancelar();
         int idHotel = elegirHotel();
-        LocalDate entrada = leerFecha("Fecha de entrada (dd/MM/yyyy o yyyy-MM-dd): ");
-        LocalDate salida = leerFecha("Fecha de salida: ");
-        System.out.println("Habitaciones disponibles: " + controlador.contarHabitacionesDisponibles(idHotel, entrada, salida));
+        mostrar(controlador.listarHabitaciones(idHotel), "Este hotel no tiene habitaciones.");
     }
 
     private void habitacionesDisponibles() throws Exception {
+        avisoCancelar();
         int idHotel = elegirHotel();
-        LocalDate entrada = leerFecha("Fecha de entrada (dd/MM/yyyy o yyyy-MM-dd): ");
-        LocalDate salida = leerFecha("Fecha de salida: ");
+        LocalDate entrada = pedirFecha("Fecha de entrada" + TEXTO_FECHA, f -> { });
+        LocalDate salida = pedirFecha("Fecha de salida" + TEXTO_FECHA, f -> controlador.validarRango(entrada, f));
         mostrar(controlador.habitacionesDisponibles(idHotel, entrada, salida),
                 "No hay habitaciones disponibles en esas fechas.");
     }
 
+    private void habitacionesPorCapacidad() throws Exception {
+        avisoCancelar();
+        int idHotel = elegirHotel();
+        int personas = pedirEntero("Número de personas: ", controlador::validarPersonas);
+        mostrar(controlador.buscarHabitacionesPorCapacidad(idHotel, personas),
+                "No hay habitaciones con capacidad para esas personas.");
+    }
+
+    // ---------------------------------------------------- Acciones: reservas
+
     /** Sigue los pasos del caso de uso: cliente, hotel, personas, fechas y habitaciones disponibles. */
     private void crearReserva() throws Exception {
+        avisoCancelar();
+        if (!controlador.hayClientes()) {
+            throw new IllegalStateException("No hay clientes registrados. Añade uno primero.");
+        }
         System.out.println("\nClientes:");
-        mostrar(controlador.listarClientes(), "No hay clientes. Añade uno primero.");
-        int idCliente = leerEntero("Id del cliente: ");
+        mostrar(controlador.listarClientes(), "");
+        int idCliente = pedirEntero("Id del cliente: ", controlador::validarCliente);
         int idHotel = elegirHotel();
-        int personas = leerEntero("Número de personas: ");
-        LocalDate entrada = leerFecha("Fecha de entrada (dd/MM/yyyy o yyyy-MM-dd): ");
-        LocalDate salida = leerFecha("Fecha de salida: ");
+        int personas = pedirEntero("Número de personas: ", controlador::validarPersonas);
+        LocalDate entrada = pedirFecha("Fecha de entrada" + TEXTO_FECHA, f -> { });
+        LocalDate salida = pedirFecha("Fecha de salida" + TEXTO_FECHA, f -> controlador.validarRango(entrada, f));
 
         System.out.println("\nHabitaciones disponibles:");
         List<String> disponibles = controlador.habitacionesDisponibles(idHotel, entrada, salida);
@@ -285,54 +340,102 @@ public class Vista {
         }
         mostrar(disponibles, "");
         System.out.println("(El id de cada habitación aparece entre paréntesis)");
-        List<Integer> ids = leerListaEnteros("Ids de las habitaciones a reservar (separados por comas): ");
+        List<Integer> ids = pedirListaEnteros("Ids de las habitaciones a reservar (separados por comas): ",
+                lista -> controlador.validarHabitacionesReserva(idHotel, entrada, salida, personas, lista));
 
-        System.out.println("Reserva creada:\n" + controlador.crearReserva(idCliente, idHotel, entrada, salida, personas, ids));
+        System.out.println("Reserva creada:\n  "
+                + controlador.crearReserva(idCliente, idHotel, entrada, salida, personas, ids));
     }
 
     private void consultarReserva() throws Exception {
-        int id = leerEntero("Id de la reserva: ");
+        avisoCancelar();
+        int id = pedirEntero("Id de la reserva: ", controlador::validarReserva);
         System.out.println(controlador.buscarReserva(id));
         System.out.println("Habitaciones:");
         mostrar(controlador.detallesReserva(id), "");
     }
 
     private void modificarReserva() throws Exception {
-        int id = leerEntero("Id de la reserva: ");
-        LocalDate entrada = leerFecha("Nueva fecha de entrada (dd/MM/yyyy o yyyy-MM-dd): ");
-        LocalDate salida = leerFecha("Nueva fecha de salida: ");
-        int personas = leerEntero("Nuevo número de personas: ");
-        System.out.println("Reserva modificada:\n" + controlador.modificarReserva(id, entrada, salida, personas));
+        avisoCancelar();
+        int id = pedirEntero("Id de la reserva: ", controlador::validarReservaModificable);
+        while (true) {
+            LocalDate entrada = pedirFecha("Nueva fecha de entrada" + TEXTO_FECHA, f -> { });
+            LocalDate salida = pedirFecha("Nueva fecha de salida" + TEXTO_FECHA,
+                    f -> controlador.validarRango(entrada, f));
+            int personas = pedirEntero("Nuevo número de personas: ", controlador::validarPersonas);
+            try {
+                System.out.println("Reserva modificada:\n  " + controlador.modificarReserva(id, entrada, salida, personas));
+                return;
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                // Cada dato era válido por separado, pero juntos no son posibles (p. ej. habitación ocupada)
+                System.out.println("ERROR: " + e.getMessage());
+                System.out.println("Introduce de nuevo las fechas y las personas.");
+            }
+        }
+    }
+
+    private void confirmarReserva() throws Exception {
+        avisoCancelar();
+        int id = pedirEntero("Id de la reserva: ", controlador::validarReserva);
+        System.out.println("Reserva confirmada:\n  " + controlador.confirmarReserva(id));
+    }
+
+    private void cancelarReserva() throws Exception {
+        avisoCancelar();
+        int id = pedirEntero("Id de la reserva: ", controlador::validarReserva);
+        System.out.println("Reserva cancelada:\n  " + controlador.cancelarReserva(id));
+    }
+
+    private void calcularImporte() throws Exception {
+        avisoCancelar();
+        int id = pedirEntero("Id de la reserva: ", controlador::validarReserva);
+        System.out.printf("Importe total: %.2f €%n", controlador.calcularImporte(id));
     }
 
     private void consultarReservasPorFiltro() {
+        avisoCancelar();
         System.out.println("Deja vacío cualquier filtro que no quieras aplicar.");
-        String estado = leerTextoOpcional("Estado (PENDIENTE, CONFIRMADA, CANCELADA): ");
-        LocalDate entrada = leerFechaOpcional("Fecha de entrada: ");
-        LocalDate salida = leerFechaOpcional("Fecha de salida: ");
-        Integer idCliente = leerEnteroOpcional("Id de cliente: ");
-        Integer idHotel = leerEnteroOpcional("Id de hotel: ");
+        String estado = pedirTextoOpcional("Estado (PENDIENTE, CONFIRMADA, CANCELADA): ", controlador::validarEstado);
+        LocalDate entrada = pedirFechaOpcional("Fecha de entrada" + TEXTO_FECHA);
+        LocalDate salida = pedirFechaOpcional("Fecha de salida" + TEXTO_FECHA);
+        Integer idCliente = pedirEnteroOpcional("Id de cliente: ", controlador::validarCliente);
+        Integer idHotel = pedirEnteroOpcional("Id de hotel: ", controlador::validarHotel);
         mostrar(controlador.consultarReservas(estado, entrada, salida, idCliente, idHotel),
                 "No hay reservas que cumplan los filtros.");
     }
 
+    /** Muestra los hoteles y pide el id de uno que exista. */
     private int elegirHotel() {
+        if (!controlador.hayHoteles()) {
+            throw new IllegalStateException("No hay hoteles registrados. Añade uno primero.");
+        }
         System.out.println("\nHoteles:");
-        mostrar(controlador.listarHoteles(), "No hay hoteles registrados.");
-        return leerEntero("Id del hotel: ");
+        mostrar(controlador.listarHoteles(), "");
+        return pedirEntero("Id del hotel: ", controlador::validarHotel);
     }
 
     // ------------------------------------------------------------ Utilidades
 
-    /** Ejecuta una acción y, si el modelo lanza una excepción, muestra su mensaje en lugar de romper el programa. */
+    /**
+     * Ejecuta una acción y, si el modelo lanza una excepción, muestra su mensaje en lugar de
+     * romper el programa.
+     */
     private void ejecutar(Accion accion) {
         try {
             accion.ejecutar();
-        } catch (java.util.NoSuchElementException e) {
+        } catch (OperacionCancelada e) {
+            System.out.println("Operación cancelada.");
+        } catch (NoSuchElementException e) {
             throw e; // fin de la entrada: lo gestiona iniciar()
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
         }
+    }
+
+    private void avisoCancelar() {
+        System.out.println("(Escribe '" + PALABRA_CANCELAR + "' en cualquier momento para volver al menú)");
     }
 
     private void mostrar(List<String> lineas, String mensajeVacio) {
@@ -352,91 +455,12 @@ public class Vista {
         return scanner.nextLine().trim();
     }
 
-    private String leerTextoOpcional(String mensaje) {
-        String texto = leerTexto(mensaje);
-        return texto.isEmpty() ? null : texto;
-    }
-
     private int leerEntero(String mensaje) {
         while (true) {
             try {
                 return Integer.parseInt(leerTexto(mensaje));
             } catch (NumberFormatException e) {
                 System.out.println("Introduce un número entero válido.");
-            }
-        }
-    }
-
-    private Integer leerEnteroOpcional(String mensaje) {
-        while (true) {
-            String texto = leerTexto(mensaje);
-            if (texto.isEmpty()) {
-                return null;
-            }
-            try {
-                return Integer.parseInt(texto);
-            } catch (NumberFormatException e) {
-                System.out.println("Introduce un número entero válido o déjalo vacío.");
-            }
-        }
-    }
-
-    private double leerDecimal(String mensaje) {
-        while (true) {
-            try {
-                return Double.parseDouble(leerTexto(mensaje).replace(',', '.'));
-            } catch (NumberFormatException e) {
-                System.out.println("Introduce un número válido (por ejemplo 89.90).");
-            }
-        }
-    }
-
-    private LocalDate leerFecha(String mensaje) {
-        while (true) {
-            LocalDate fecha = convertirFecha(leerTexto(mensaje));
-            if (fecha != null) {
-                return fecha;
-            }
-            System.out.println("Fecha no válida. Usa dd/MM/yyyy o yyyy-MM-dd.");
-        }
-    }
-
-    private LocalDate leerFechaOpcional(String mensaje) {
-        while (true) {
-            String texto = leerTexto(mensaje);
-            if (texto.isEmpty()) {
-                return null;
-            }
-            LocalDate fecha = convertirFecha(texto);
-            if (fecha != null) {
-                return fecha;
-            }
-            System.out.println("Fecha no válida. Usa dd/MM/yyyy o yyyy-MM-dd, o déjala vacía.");
-        }
-    }
-
-    private LocalDate convertirFecha(String texto) {
-        try {
-            return LocalDate.parse(texto);
-        } catch (DateTimeParseException e) {
-            try {
-                return LocalDate.parse(texto, FORMATO_ES);
-            } catch (DateTimeParseException e2) {
-                return null;
-            }
-        }
-    }
-
-    private List<Integer> leerListaEnteros(String mensaje) {
-        while (true) {
-            List<Integer> numeros = new ArrayList<>();
-            try {
-                for (String parte : leerTexto(mensaje).split(",")) {
-                    numeros.add(Integer.parseInt(parte.trim()));
-                }
-                return numeros;
-            } catch (NumberFormatException e) {
-                System.out.println("Introduce números separados por comas (por ejemplo 1,3).");
             }
         }
     }
@@ -449,6 +473,174 @@ public class Vista {
             }
             if (r.equals("n") || r.equals("no")) {
                 return false;
+            }
+        }
+    }
+
+    // Los métodos "pedir..." repiten la pregunta hasta que el dato es correcto.
+    // Si el valor es incorrecto se muestra el motivo y se vuelve a preguntar lo mismo,
+    // sin avanzar al siguiente dato. Escribir "cancelar" aborta la operación.
+
+    private void comprobarCancelar(String texto) {
+        if (texto.equalsIgnoreCase(PALABRA_CANCELAR)) {
+            throw new OperacionCancelada();
+        }
+    }
+
+    private String pedirTexto(String mensaje, Comprobacion<String> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            try {
+                comprobacion.comprobar(texto);
+                return texto;
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private String pedirTextoOpcional(String mensaje, Comprobacion<String> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            if (texto.isEmpty()) {
+                return null;
+            }
+            try {
+                comprobacion.comprobar(texto);
+                return texto;
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private int pedirEntero(String mensaje, Comprobacion<Integer> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            try {
+                int valor = Integer.parseInt(texto);
+                comprobacion.comprobar(valor);
+                return valor;
+            } catch (NumberFormatException e) {
+                System.out.println("ERROR: Introduce un número entero válido.");
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private Integer pedirEnteroOpcional(String mensaje, Comprobacion<Integer> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            if (texto.isEmpty()) {
+                return null;
+            }
+            try {
+                int valor = Integer.parseInt(texto);
+                comprobacion.comprobar(valor);
+                return valor;
+            } catch (NumberFormatException e) {
+                System.out.println("ERROR: Introduce un número entero válido o déjalo vacío.");
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private double pedirDecimal(String mensaje, Comprobacion<Double> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            try {
+                double valor = Double.parseDouble(texto.replace(',', '.'));
+                comprobacion.comprobar(valor);
+                return valor;
+            } catch (NumberFormatException e) {
+                System.out.println("ERROR: Introduce un número válido (por ejemplo 89.90).");
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private LocalDate pedirFecha(String mensaje, Comprobacion<LocalDate> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            LocalDate fecha = convertirFecha(texto);
+            if (fecha == null) {
+                System.out.println("ERROR: Fecha no válida. Usa dd/MM/yyyy o yyyy-MM-dd.");
+                continue;
+            }
+            try {
+                comprobacion.comprobar(fecha);
+                return fecha;
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private LocalDate pedirFechaOpcional(String mensaje) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            if (texto.isEmpty()) {
+                return null;
+            }
+            LocalDate fecha = convertirFecha(texto);
+            if (fecha != null) {
+                return fecha;
+            }
+            System.out.println("ERROR: Fecha no válida. Usa dd/MM/yyyy o yyyy-MM-dd, o déjala vacía.");
+        }
+    }
+
+    private List<Integer> pedirListaEnteros(String mensaje, Comprobacion<List<Integer>> comprobacion) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            comprobarCancelar(texto);
+            List<Integer> numeros = new ArrayList<>();
+            try {
+                for (String parte : texto.split(",")) {
+                    numeros.add(Integer.parseInt(parte.trim()));
+                }
+                comprobacion.comprobar(numeros);
+                return numeros;
+            } catch (NumberFormatException e) {
+                System.out.println("ERROR: Introduce números separados por comas (por ejemplo 1,3).");
+            } catch (NoSuchElementException e) {
+                throw e;
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
+        }
+    }
+
+    private LocalDate convertirFecha(String texto) {
+        try {
+            return LocalDate.parse(texto);
+        } catch (DateTimeParseException e) {
+            try {
+                return LocalDate.parse(texto, FORMATO_ES);
+            } catch (DateTimeParseException e2) {
+                return null;
             }
         }
     }

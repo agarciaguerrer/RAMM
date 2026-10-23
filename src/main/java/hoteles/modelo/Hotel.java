@@ -19,11 +19,11 @@ public class Hotel {
         idHotel = v;
     }
     public String getNombre() { return nombre; }
-    public void setNombre(String v) { nombre = obligatorio(v, "El nombre es obligatorio."); }
+    public void setNombre(String v) { nombre = Validaciones.nombreHotel(v); }
     public String getCiudad() { return ciudad; }
-    public void setCiudad(String v) { ciudad = obligatorio(v, "La ciudad es obligatoria."); }
+    public void setCiudad(String v) { ciudad = Validaciones.ciudad(v); }
     public String getDireccion() { return direccion; }
-    public void setDireccion(String v) { direccion = obligatorio(v, "La dirección es obligatoria."); }
+    public void setDireccion(String v) { direccion = Validaciones.direccion(v); }
     public List<Habitacion> getHabitaciones() { return Collections.unmodifiableList(habitaciones); }
     public void anadirHabitacion(Habitacion h) {
         if (h == null) throw new IllegalArgumentException("La habitación no puede ser nula.");
@@ -38,10 +38,6 @@ public class Hotel {
     }
     public long contarHabitacionesDisponibles(LocalDate entrada, LocalDate salida, List<Reserva> reservas) {
         return habitaciones.stream().filter(h -> h.estaDisponible(entrada, salida, reservas)).count();
-    }
-    private static String obligatorio(String v, String m) {
-        if (v == null || v.isBlank()) throw new IllegalArgumentException(m);
-        return v.trim();
     }
     @Override public String toString() {
         return nombre + " (id " + idHotel + ") | " + ciudad + " | " + direccion + " | "
