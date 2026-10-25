@@ -2,18 +2,27 @@ package hoteles.modelo;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
- * Contiene todos los datos de la aplicación y realiza todas las operaciones que los afectan.
- * No lee ni escribe por consola: eso es cosa de la Vista.
+ * - Contiene todos los datos de la aplicación y realiza todas las operaciones que los afectan.
+ * - No lee ni escribe por consola: eso es cosa de la Vista.
  */
 public class Datos {
 
     private final Repositorio<Cliente> clientes = new Repositorio<>("un cliente", Cliente::getIdCliente);
     private final Repositorio<Hotel> hoteles = new Repositorio<>("un hotel", Hotel::getIdHotel);
-    private final Repositorio<Reserva> reservas = new Repositorio<>("una reserva", Reserva::getIdReserva);
+    // TreeMap: las reservas quedan siempre ordenadas por su id
+    private final Repositorio<Reserva> reservas =
+            new Repositorio<>("una reserva", Reserva::getIdReserva, new TreeMap<>());
+
+    // HashSet: comprobar si un email ya está registrado es inmediato (O(1)) y no admite repetidos.
+    // Se guardan en minúsculas para que "Laura@Email.com" y "laura@email.com" cuenten como el mismo.
+    private final Set<String> emailsRegistrados = new HashSet<>();
 
     private int siguienteIdCliente = 1;
     private int siguienteIdHotel = 1;
@@ -25,9 +34,13 @@ public class Datos {
 
     public Cliente anadirCliente(String nombre, String apellidos, String email, String telefono)
             throws ElementoDuplicadoException {
-        comprobarEmailDisponible(email, null);
+        String emailNuevo = email == null ? "" : email.trim();
+        if (emailsRegistrados.contains(emailNuevo.toLowerCase())) {
+            throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
+        }
         Cliente cliente = new Cliente(siguienteIdCliente, nombre, apellidos, email, telefono);
         clientes.anadir(cliente);
+        emailsRegistrados.add(cliente.getEmail().toLowerCase());
         siguienteIdCliente++;
         return cliente;
     }
@@ -50,8 +63,22 @@ public class Datos {
     public Cliente modificarCliente(int idCliente, String nombre, String apellidos, String email, String telefono)
             throws ElementoNoEncontradoException, ElementoDuplicadoException {
         Cliente cliente = clientes.buscar(idCliente);
-        comprobarEmailDisponible(email, idCliente);
+        String emailNuevo = email == null ? "" : email.trim();
+        String emailAnterior = cliente.getEmail().toLowerCase();
+
+        // Comprobar si el nuevo email ya está registrado por otro cliente
+        if (!emailAnterior.equals(emailNuevo.toLowerCase())) {
+            if (emailsRegistrados.contains(emailNuevo.toLowerCase())) {
+                throw new ElementoDuplicadoException("Ya existe un cliente con el email " + emailNuevo);
+            }
+        }
+
         cliente.actualizarDatos(nombre, apellidos, email, telefono);
+
+        // Actualizar el conjunto de emails
+        emailsRegistrados.remove(emailAnterior);
+        emailsRegistrados.add(cliente.getEmail().toLowerCase());
+
         return cliente;
     }
 
@@ -77,7 +104,8 @@ public class Datos {
                         "No se puede eliminar un cliente con reservas activas (reserva #" + r.getIdReserva() + ")");
             }
         }
-        clientes.eliminar(idCliente);
+        Cliente eliminado = clientes.eliminar(idCliente);
+        emailsRegistrados.remove(eliminado.getEmail().toLowerCase());
     }
 
     public List<Reserva> reservasDeCliente(int idCliente) throws ElementoNoEncontradoException {
@@ -189,7 +217,6 @@ public class Datos {
         try {
             reservas.anadir(reserva);
         } catch (ElementoDuplicadoException e) {
-            // No debería ocurrir porque el id es autoincremental
             throw new OperacionInvalidaException("No se pudo registrar la reserva: " + e.getMessage());
         }
         siguienteIdReserva++;
@@ -268,7 +295,6 @@ public class Datos {
         comprobarRango(entrada, salida);
         comprobarPersonas(personas);
 
-        // La disponibilidad se comprueba contra el resto de reservas (la propia no cuenta)
         List<Reserva> otras = reservas.filtrar(r -> r.getIdReserva() != idReserva);
         List<Habitacion> habitaciones = new ArrayList<>();
         for (DetalleReserva d : reserva.getDetalles()) {
@@ -278,7 +304,6 @@ public class Datos {
         return reserva;
     }
 
-    /** Comprueba, sin crear nada, que esas habitaciones se pueden reservar con esos datos. */
     public void comprobarHabitacionesParaReserva(int idHotel, LocalDate entrada, LocalDate salida,
                                                  int personas, List<Integer> idsHabitaciones)
             throws ElementoNoEncontradoException, OperacionInvalidaException, HabitacionNoDisponibleException {
@@ -291,7 +316,6 @@ public class Datos {
 
     // ------------------------------------------------------------ Datos de demo
 
-    /** Carga unos datos de ejemplo para poder probar la aplicación sin teclear todo. */
     public void cargarDatosPrueba() {
         try {
             anadirCliente("Laura", "Martín Pérez", "laura.martin@email.com", "600111222");
@@ -317,7 +341,6 @@ public class Datos {
 
     // ----------------------------------------------------------------- Privados
 
-    /** La salida debe ser posterior a la entrada. */
     public void comprobarRango(LocalDate entrada, LocalDate salida) throws OperacionInvalidaException {
         if (entrada == null || salida == null || !salida.isAfter(entrada)) {
             throw new OperacionInvalidaException("La fecha de salida debe ser posterior a la de entrada");
@@ -362,7 +385,6 @@ public class Datos {
         return elegidas;
     }
 
-    /** Cada habitación elegida debe estar libre y tener capacidad para todas las personas de la reserva. */
     private void comprobarDisponibilidadYCapacidad(List<Habitacion> habitaciones, LocalDate entrada,
                                                    LocalDate salida, int personas, List<Reserva> otrasReservas)
             throws HabitacionNoDisponibleException {
