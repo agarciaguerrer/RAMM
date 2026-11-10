@@ -1,5 +1,6 @@
 package hoteles.modelo;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -8,14 +9,26 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-/** Pruebas de las excepciones propias y de las reglas de negocio de Datos (con la clase genérica Repositorio). */
+/**
+ * Pruebas de las excepciones propias y de las reglas de negocio de Datos, ahora sobre MySQL
+ * (base de datos de pruebas hoteles_test, ver {@link EntornoBD}). Se omiten si no hay MySQL accesible.
+ * Como cada consulta crea objetos nuevos a partir de la base de datos, los resultados se comprueban
+ * con lo que devuelve el método o volviendo a leer de la base de datos.
+ */
 class DatosTest {
 
     private Datos datos;
 
+    @BeforeAll
+    static void comprobarBaseDeDatos() {
+        assumeTrue(EntornoBD.preparar(), "No hay un MySQL accesible: se omiten las pruebas de persistencia");
+    }
+
     @BeforeEach
     void preparar() throws Exception {
+        EntornoBD.limpiar();
         datos = new Datos();
         datos.anadirCliente("Laura", "Martín", "laura@email.com", "600111222");
         datos.anadirHotel("Hotel Mar", "Mataró", "Passeig 1");
@@ -40,10 +53,16 @@ class DatosTest {
     void modificarReservaNoChocaConsigoMisma() throws Exception {
         Reserva r = datos.crearReserva(1, 1, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 13), 2, List.of(1));
 
-        datos.modificarReserva(r.getIdReserva(), LocalDate.of(2026, 11, 11), LocalDate.of(2026, 11, 14), 1);
+        Reserva modificada = datos.modificarReserva(r.getIdReserva(),
+                LocalDate.of(2026, 11, 11), LocalDate.of(2026, 11, 14), 1);
 
-        assertEquals(LocalDate.of(2026, 11, 14), r.getFechaSalida());
-        assertEquals(1, r.getNumeroPersonas());
+        assertEquals(LocalDate.of(2026, 11, 14), modificada.getFechaSalida());
+        assertEquals(1, modificada.getNumeroPersonas());
+        // Y el cambio está guardado en la base de datos
+        Reserva releida = datos.buscarReserva(r.getIdReserva());
+        assertEquals(LocalDate.of(2026, 11, 11), releida.getFechaEntrada());
+        assertEquals(LocalDate.of(2026, 11, 14), releida.getFechaSalida());
+        assertEquals(1, releida.getNumeroPersonas());
     }
 
     @Test
@@ -51,7 +70,7 @@ class DatosTest {
         Reserva r = datos.crearReserva(1, 1, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 13), 2, List.of(1));
         datos.cancelarReserva(r.getIdReserva());
 
-        assertEquals(EstadoReserva.CANCELADA, r.getEstado());
+        assertEquals(EstadoReserva.CANCELADA, datos.buscarReserva(r.getIdReserva()).getEstado());
         assertThrows(OperacionInvalidaException.class, () -> datos.cancelarReserva(r.getIdReserva()));
     }
 

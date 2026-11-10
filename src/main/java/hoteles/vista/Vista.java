@@ -46,8 +46,15 @@ public class Vista {
         System.out.println("   GESTIÓN DE HOTEL - Grupo RAMM");
         System.out.println("=====================================");
         if (preguntarSiNo("¿Cargar datos de ejemplo?")) {
-            controlador.cargarDatosPrueba();
-            System.out.println("Datos de ejemplo cargados.");
+            try {
+                if (controlador.cargarDatosPrueba()) {
+                    System.out.println("Datos de ejemplo cargados.");
+                } else {
+                    System.out.println("La base de datos ya contiene datos: no se han cargado los de ejemplo.");
+                }
+            } catch (Exception e) {
+                System.out.println("ERROR: " + e.getMessage());
+            }
         }
         try {
             menuPrincipal();
@@ -94,11 +101,11 @@ public class Vista {
             System.out.println("0. Volver");
             opcion = leerEntero("Opción: ");
             switch (opcion) {
-                case 1 -> mostrar(controlador.listarClientes(), "No hay clientes registrados.");
+                case 1 -> ejecutar(() -> mostrar(controlador.listarClientes(), "No hay clientes registrados."));
                 case 2 -> ejecutar(this::anadirCliente);
                 case 3 -> ejecutar(this::eliminarCliente);
-                case 4 -> mostrar(controlador.buscarClientes(leerTexto("Nombre o apellido: ")),
-                        "No se encontró ningún cliente.");
+                case 4 -> ejecutar(() -> mostrar(controlador.buscarClientes(leerTexto("Nombre o apellido: ")),
+                        "No se encontró ningún cliente."));
                 case 5 -> ejecutar(this::modificarCliente);
                 case 6 -> ejecutar(this::reservasDeCliente);
                 case 0 -> { }
@@ -120,9 +127,9 @@ public class Vista {
             System.out.println("0. Volver");
             opcion = leerEntero("Opción: ");
             switch (opcion) {
-                case 1 -> mostrar(controlador.listarHoteles(), "No hay hoteles registrados.");
-                case 2 -> mostrar(controlador.buscarHotelesPorCiudad(leerTexto("Ciudad: ")),
-                        "No hay hoteles en esa ciudad.");
+                case 1 -> ejecutar(() -> mostrar(controlador.listarHoteles(), "No hay hoteles registrados."));
+                case 2 -> ejecutar(() -> mostrar(controlador.buscarHotelesPorCiudad(leerTexto("Ciudad: ")),
+                        "No hay hoteles en esa ciudad."));
                 case 3 -> ejecutar(this::contarDisponibles);
                 case 4 -> ejecutar(this::habitacionesDisponibles);
                 case 5 -> ejecutar(this::habitacionesPorCategoria);
@@ -188,7 +195,7 @@ public class Vista {
             System.out.println("0. Volver");
             opcion = leerEntero("Opción: ");
             switch (opcion) {
-                case 1 -> mostrar(controlador.listarReservas(), "No hay reservas registradas.");
+                case 1 -> ejecutar(() -> mostrar(controlador.listarReservas(), "No hay reservas registradas."));
                 case 2 -> ejecutar(this::consultarReservasPorFiltro);
                 case 0 -> { }
                 default -> System.out.println("Opción no válida.");

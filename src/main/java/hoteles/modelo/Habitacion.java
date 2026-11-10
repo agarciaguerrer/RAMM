@@ -12,6 +12,10 @@ public class Habitacion {
         setIdHabitacion(idHabitacion); setNumero(numero); setCategoria(categoria);
         setCapacidad(capacidad); setPrecioNoche(precioNoche);
     }
+    /** Habitación todavía no guardada: su id (0 hasta entonces) lo asigna la base de datos al insertarla. */
+    public Habitacion(String numero, String categoria, int capacidad, double precioNoche) {
+        setNumero(numero); setCategoria(categoria); setCapacidad(capacidad); setPrecioNoche(precioNoche);
+    }
     public int getIdHabitacion() { return idHabitacion; }
     public void setIdHabitacion(int v) {
         if (v <= 0) throw new IllegalArgumentException("El identificador debe ser positivo.");

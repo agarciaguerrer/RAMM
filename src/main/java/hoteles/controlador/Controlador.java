@@ -21,8 +21,9 @@ public class Controlador {
         this.datos = new Datos();
     }
 
-    public void cargarDatosPrueba() {
-        datos.cargarDatosPrueba();
+    /** Devuelve false si no se han cargado porque la base de datos ya tenía datos. */
+    public boolean cargarDatosPrueba() {
+        return datos.cargarDatosPrueba();
     }
 
     // ---------------------------------------------------------------- Clientes
