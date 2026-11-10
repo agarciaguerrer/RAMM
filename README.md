@@ -1,8 +1,9 @@
 # RAMM - Gestión de hotel (FP447, Producto 3: persistencia en base de datos)
 
 Aplicación de consola en Java con patrón MVC. Respecto al Producto 2, los datos ya no viven en memoria:
-se guardan en una base de datos MySQL mediante JDBC. Solo ha cambiado la capa Modelo (más dos retoques
-mínimos en Vista y Controlador).
+se guardan en una base de datos MySQL mediante JDBC. Además, siguiendo el comentario del Producto 2, la
+Vista y el Controlador, antes de una sola clase cada uno, se han repartido por áreas (clientes, hoteles,
+habitaciones y reservas).
 
 ## Estructura
 
@@ -12,8 +13,10 @@ src/main/java/hoteles
 ├── modelo        Dominio (Cliente, Hotel, Habitacion, Reserva...), Datos y excepciones propias
 │   └── dao       Interfaces DAO, DAOFactory (patrón Factory), Transaccion, PersistenciaException
 │       └── mysql Implementaciones MySQL: ConexionBD (utilidad de conexión), MySQL*DAO, ErroresSQL
-├── controlador   Controlador (único puente entre vista y modelo)
-└── vista         Vista (menús) y Main
+├── controlador   ClienteControlador, HotelControlador, HabitacionControlador, ReservaControlador
+│                 e InicioControlador (únicos puentes entre vista y modelo)
+└── vista         MenuVista, ClienteVista, HotelVista, HabitacionVista, ReservaVista,
+                  Consola (lectura y validación de datos), SelectorHotel y Main
 src/main/resources/bd.properties     Configuración de conexión por defecto
 src/test/java/hoteles/modelo         Pruebas JUnit 5
 ```
@@ -61,7 +64,8 @@ accesible con la misma configuración; si no lo hay, se omiten.
 
 ## Decisiones de diseño
 
-- La Vista no importa nada del paquete modelo; el Controlador le devuelve textos y tipos básicos.
+- Las vistas no importan nada del paquete modelo; los controladores les devuelven textos y tipos básicos.
+- `Main` crea el modelo (`Datos`), un controlador y una vista por área, y las conecta entre sí.
 - Modelo relacional: `cliente`, `hotel`, `habitacion` (1 hotel : N habitaciones), `reserva` y
   `detalle_reserva` (tabla N:M entre reserva y habitación, con el precio aplicado). Todas las claves
   primarias son AUTO_INCREMENT; el código lo asigna la base de datos.
