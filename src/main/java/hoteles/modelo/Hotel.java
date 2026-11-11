@@ -13,6 +13,10 @@ public class Hotel {
     public Hotel(int idHotel, String nombre, String ciudad, String direccion) {
         setIdHotel(idHotel); setNombre(nombre); setCiudad(ciudad); setDireccion(direccion);
     }
+    /** Hotel todavía no guardado: su id (0 hasta entonces) lo asigna la base de datos al insertarlo. */
+    public Hotel(String nombre, String ciudad, String direccion) {
+        setNombre(nombre); setCiudad(ciudad); setDireccion(direccion);
+    }
     public int getIdHotel() { return idHotel; }
     public void setIdHotel(int v) {
         if (v <= 0) throw new IllegalArgumentException("El identificador del hotel debe ser positivo.");

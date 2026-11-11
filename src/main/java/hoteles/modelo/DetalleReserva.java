@@ -8,6 +8,10 @@ public class DetalleReserva {
     public DetalleReserva(int idDetalle, Habitacion habitacion, double precioNocheAplicado) {
         setIdDetalle(idDetalle); setHabitacion(habitacion); setPrecioNocheAplicado(precioNocheAplicado);
     }
+    /** Detalle todavía no guardado: su id (0 hasta entonces) lo asigna la base de datos al insertarlo. */
+    public DetalleReserva(Habitacion habitacion, double precioNocheAplicado) {
+        setHabitacion(habitacion); setPrecioNocheAplicado(precioNocheAplicado);
+    }
     public int getIdDetalle() { return idDetalle; }
     public void setIdDetalle(int v) {
         if (v <= 0) throw new IllegalArgumentException("El identificador debe ser positivo.");
