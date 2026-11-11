@@ -71,6 +71,26 @@ class DatosTest {
     }
 
     @Test
+    void modificarClienteNoPermiteElEmailDeOtroPeroSiElPropio() throws Exception {
+        datos.anadirCliente("Carlos", "Ruiz", "carlos@email.com", "611");
+
+        assertThrows(ElementoDuplicadoException.class,
+                () -> datos.modificarCliente(2, "Carlos", "Ruiz", "laura@email.com", "611"));
+        // Conservar su propio email no es un duplicado
+        datos.modificarCliente(2, "Carlos", "Ruiz Soler", "carlos@email.com", "622");
+        assertEquals("Ruiz Soler", datos.buscarCliente(2).getApellidos());
+    }
+
+    @Test
+    void validacionesRechazanDatosIncorrectos() {
+        assertThrows(IllegalArgumentException.class, () -> Validaciones.email("sin-arroba"));
+        assertThrows(IllegalArgumentException.class, () -> Validaciones.nombre("   "));
+        assertThrows(IllegalArgumentException.class, () -> Validaciones.precio(0));
+        assertThrows(IllegalArgumentException.class, () -> Validaciones.capacidad(0));
+        assertThrows(IllegalArgumentException.class, () -> Validaciones.personas(-1));
+    }
+
+    @Test
     void emailDuplicadoYElementosInexistentesLanzanExcepcionesPropias() {
         assertThrows(ElementoDuplicadoException.class,
                 () -> datos.anadirCliente("Otra", "Persona", "LAURA@email.com", "611"));
