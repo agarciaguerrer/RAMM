@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Pruebas de las excepciones propias y de las reglas de negocio de Datos, ahora sobre MySQL
- * (base de datos de pruebas hoteles_test, ver {@link EntornoBD}). Se omiten si no hay MySQL accesible.
+ * (base de datos de pruebas RAMM_hoteles_test, ver {@link EntornoBD}). Se omiten si no hay MySQL accesible.
  * Como cada consulta crea objetos nuevos a partir de la base de datos, los resultados se comprueban
  * con lo que devuelve el método o volviendo a leer de la base de datos.
  */

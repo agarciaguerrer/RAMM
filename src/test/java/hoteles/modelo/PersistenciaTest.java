@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Pruebas de la persistencia en MySQL: que los datos se guardan de verdad, que los ids los genera la base de
  * datos, que las transacciones deshacen lo que no se confirma, que los procedimientos almacenados protegen la
- * coherencia de los datos y que no hay inyección de SQL. Usan la base de datos de pruebas hoteles_test.
+ * coherencia de los datos y que no hay inyección de SQL. Usan la base de datos de pruebas RAMM_hoteles_test.
  */
 class PersistenciaTest {
 

@@ -10,12 +10,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Prepara una base de datos de pruebas llamada {@code hoteles_test} (nunca toca la base de datos real
- * {@code hoteles}): la crea desde cero con el mismo script sql/hoteles.sql que usa la aplicación y deja
+ * Prepara una base de datos de pruebas llamada {@code RAMM_hoteles_test} (nunca toca la base de datos real
+ * {@code RAMM_hoteles}): la crea desde cero con el mismo script sql/hoteles.sql que usa la aplicación y deja
  * el programa apuntando a ella. Usa el usuario y la contraseña de la configuración (bd.properties,
  * bd.local.properties o -Dbd.usuario / -Dbd.password).
  * <p>
@@ -24,7 +26,7 @@ import java.util.List;
  */
 final class EntornoBD {
 
-    static final String NOMBRE_BD = "hoteles_test";
+    static final String NOMBRE_BD = "RAMM_hoteles_test";
     private static final String[] TABLAS = {"detalle_reserva", "reserva", "habitacion", "hotel", "cliente"};
     private static Boolean disponible;
 
@@ -35,11 +37,17 @@ final class EntornoBD {
         if (disponible != null) {
             return disponible;
         }
-        String url = Configuracion.get("bd.url", "jdbc:mysql://localhost:3306/hoteles");
+        String url = Configuracion.get("bd.url", "jdbc:mysql://localhost:3306/RAMM_hoteles");
         String usuario = Configuracion.get("bd.usuario", "root");
         String password = Configuracion.get("bd.password", "");
-        String urlAdmin = url.replaceFirst("/hoteles(?=[?]|$)", "/");
-        String urlTest = url.replaceFirst("/hoteles(?=[?]|$)", "/" + NOMBRE_BD);
+        // Cambia el nombre de la base de la URL (sea cual sea) por el de pruebas: nunca se toca la real.
+        Matcher partes = Pattern.compile("^(jdbc:[a-z]+://[^/]+)/[^?]*(.*)$").matcher(url);
+        if (!partes.matches()) {
+            disponible = false;
+            return false;
+        }
+        String urlAdmin = partes.group(1) + "/" + partes.group(2);
+        String urlTest = partes.group(1) + "/" + NOMBRE_BD + partes.group(2);
         try (Connection c = DriverManager.getConnection(urlAdmin, usuario, password);
              Statement st = c.createStatement()) {
             st.execute("DROP DATABASE IF EXISTS " + NOMBRE_BD);

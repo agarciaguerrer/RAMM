@@ -23,7 +23,7 @@ src/test/java/hoteles/modelo         Pruebas JUnit 5
 
 ## Puesta en marcha
 
-1. Ejecutar `sql/hoteles.sql` en MySQL 8.0.16 o superior (crea la base `hoteles`; se puede lanzar varias veces):
+1. Ejecutar `sql/hoteles.sql` en MySQL 8.0.16 o superior (crea la base `RAMM_hoteles`; se puede lanzar varias veces):
    `mysql -u root -p < sql/hoteles.sql`
 2. Indicar usuario y contraseña. Se puede editar `bd.properties`, o mejor crear un fichero
    `bd.local.properties` junto al proyecto (está en `.gitignore`) con las claves `bd.url`, `bd.usuario`
@@ -55,7 +55,7 @@ Las fechas se pueden escribir como `dd/MM/yyyy` o `yyyy-MM-dd`.
 
 ## Pruebas
 
-`mvn test`. Las pruebas de persistencia crean y borran la base `hoteles_test`, así que necesitan un MySQL
+`mvn test`. Las pruebas de persistencia crean y borran la base `RAMM_hoteles_test`, así que necesitan un MySQL
 accesible con la misma configuración; si no lo hay, se omiten.
 
 ## Nota

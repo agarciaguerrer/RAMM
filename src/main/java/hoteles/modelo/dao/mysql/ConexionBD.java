@@ -58,7 +58,7 @@ public final class ConexionBD {
     }
 
     private static Connection abrir() {
-        String url = Configuracion.get("bd.url", "jdbc:mysql://localhost:3306/hoteles");
+        String url = Configuracion.get("bd.url", "jdbc:mysql://localhost:3306/RAMM_hoteles");
         String usuario = Configuracion.get("bd.usuario", "root");
         String password = Configuracion.get("bd.password", "");
         try {

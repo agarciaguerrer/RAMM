@@ -31,9 +31,9 @@
 --   - Todas las claves primarias son AUTO_INCREMENT: el id lo genera MySQL al insertar.
 -- =============================================================================
 
-CREATE DATABASE IF NOT EXISTS hoteles
+CREATE DATABASE IF NOT EXISTS RAMM_hoteles
     CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-USE hoteles;
+USE RAMM_hoteles;
 
 -- Para empezar de cero (BORRA TODOS LOS DATOS), descomentar:
 -- DROP TABLE IF EXISTS detalle_reserva, reserva, habitacion, hotel, cliente;
