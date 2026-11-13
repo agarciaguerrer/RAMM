@@ -92,9 +92,16 @@ final class MySQLClienteDAO implements ClienteDAO {
 
     @Override
     public List<Cliente> buscarPorTexto(String texto) {
-        // INSTR no trata % ni _ como comodines (a diferencia de LIKE) y, con la collation de las
-        // tablas, no distingue mayúsculas ni acentos.
-        return consultar("WHERE INSTR(nombre, ?) > 0 OR INSTR(apellidos, ?) > 0 ", texto, texto);
+        // Se usa LIKE porque respeta la collation de las tablas (utf8mb4_0900_ai_ci), que no distingue
+        // mayúsculas ni acentos: "martin" encuentra "Martín". INSTR, en cambio, sí distingue acentos.
+        // Los comodines de LIKE (% y _) que escriba el usuario se escapan para buscarlos como texto normal.
+        String patron = "%" + escaparLike(texto) + "%";
+        return consultar("WHERE nombre LIKE ? ESCAPE '!' OR apellidos LIKE ? ESCAPE '!' ", patron, patron);
+    }
+
+    /** Antepone el carácter de escape '!' a los comodines de LIKE (y al propio '!'). */
+    private static String escaparLike(String texto) {
+        return texto.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 
     @Override

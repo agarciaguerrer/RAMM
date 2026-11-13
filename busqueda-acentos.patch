@@ -1,0 +1,77 @@
+diff --git a/src/main/java/hoteles/modelo/dao/mysql/MySQLClienteDAO.java b/src/main/java/hoteles/modelo/dao/mysql/MySQLClienteDAO.java
+index 22b33b2..de245f4 100644
+--- a/src/main/java/hoteles/modelo/dao/mysql/MySQLClienteDAO.java
++++ b/src/main/java/hoteles/modelo/dao/mysql/MySQLClienteDAO.java
+@@ -92,9 +92,16 @@ final class MySQLClienteDAO implements ClienteDAO {
+ 
+     @Override
+     public List<Cliente> buscarPorTexto(String texto) {
+-        // INSTR no trata % ni _ como comodines (a diferencia de LIKE) y, con la collation de las
+-        // tablas, no distingue mayúsculas ni acentos.
+-        return consultar("WHERE INSTR(nombre, ?) > 0 OR INSTR(apellidos, ?) > 0 ", texto, texto);
++        // Se usa LIKE porque respeta la collation de las tablas (utf8mb4_0900_ai_ci), que no distingue
++        // mayúsculas ni acentos: "martin" encuentra "Martín". INSTR, en cambio, sí distingue acentos.
++        // Los comodines de LIKE (% y _) que escriba el usuario se escapan para buscarlos como texto normal.
++        String patron = "%" + escaparLike(texto) + "%";
++        return consultar("WHERE nombre LIKE ? ESCAPE '!' OR apellidos LIKE ? ESCAPE '!' ", patron, patron);
++    }
++
++    /** Antepone el carácter de escape '!' a los comodines de LIKE (y al propio '!'). */
++    private static String escaparLike(String texto) {
++        return texto.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+     }
+ 
+     @Override
+diff --git a/src/test/java/hoteles/modelo/BusquedaClientesTest.java b/src/test/java/hoteles/modelo/BusquedaClientesTest.java
+new file mode 100644
+index 0000000..6dfa64f
+--- /dev/null
++++ b/src/test/java/hoteles/modelo/BusquedaClientesTest.java
+@@ -0,0 +1,47 @@
++package hoteles.modelo;
++
++import hoteles.modelo.dao.DAOFactory;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assumptions.assumeTrue;
++
++/** Pruebas de la búsqueda de clientes por nombre o apellidos contra MySQL. */
++class BusquedaClientesTest {
++
++    private Datos datos;
++
++    @BeforeAll
++    static void comprobarBaseDeDatos() {
++        assumeTrue(EntornoBD.preparar(), "No hay un MySQL accesible: se omiten las pruebas de persistencia");
++    }
++
++    @BeforeEach
++    void preparar() throws Exception {
++        EntornoBD.limpiar();
++        datos = new Datos(DAOFactory.obtener());
++        datos.anadirCliente("Laura", "Martín Pérez", "laura@email.com", "600111222");
++        datos.anadirCliente("Carlos", "Ruiz", "carlos@email.com", "600333444");
++    }
++
++    @Test
++    void laBusquedaNoDistingueAcentos() {
++        assertEquals(1, datos.buscarClientes("martin").size());
++        assertEquals(1, datos.buscarClientes("perez").size());
++    }
++
++    @Test
++    void laBusquedaNoDistingueMayusculas() {
++        assertEquals(1, datos.buscarClientes("MARTÍN").size());
++        assertEquals(1, datos.buscarClientes("carlos").size());
++    }
++
++    @Test
++    void losComodinesDeSqlSeBuscanComoTextoNormal() {
++        // Con LIKE sin escapar, "%" y "_" encontrarían a todos los clientes
++        assertEquals(0, datos.buscarClientes("%").size());
++        assertEquals(0, datos.buscarClientes("_").size());
++    }
++}
