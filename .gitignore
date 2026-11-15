@@ -9,3 +9,6 @@ out/
 .settings/
 nbproject/
 *.class
+
+# Configuración local de la base de datos (usuario y contraseña)
+bd.local.properties

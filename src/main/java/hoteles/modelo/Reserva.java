@@ -19,6 +19,12 @@ public class Reserva {
         setIdReserva(idReserva); setCliente(cliente); setHotel(hotel);
         setFechas(fechaEntrada, fechaSalida); setNumeroPersonas(numeroPersonas); setEstado(estado);
     }
+    /** Reserva todavía no guardada: su id (0 hasta entonces) lo asigna la base de datos al insertarla. */
+    public Reserva(Cliente cliente, Hotel hotel, LocalDate fechaEntrada, LocalDate fechaSalida,
+                   int numeroPersonas, EstadoReserva estado) {
+        setCliente(cliente); setHotel(hotel);
+        setFechas(fechaEntrada, fechaSalida); setNumeroPersonas(numeroPersonas); setEstado(estado);
+    }
     public int getIdReserva() { return idReserva; }
     public void setIdReserva(int v) {
         if (v <= 0) throw new IllegalArgumentException("El identificador debe ser positivo.");
